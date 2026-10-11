@@ -1,12 +1,33 @@
 # sdk-auth
 
-Monorepo de aula: SDK de login com SQLite, API Express e tela React. O código está em TypeScript. O Node executa os `.ts` direto, sem passo de build.
+SDK de login com SQLite. O pacote que outro projeto instala é `@curso/login-sdk`. Este repositório também tem uma API Express e uma tela React para mostrar a SDK em uso. Essas duas apps são `private` e não entram no `npm install`.
 
-O SQL mora em `packages/login-sdk/sql/schema.sql`. O arquivo `auth.sqlite` nasce em `packages/login-sdk/data/` quando você roda o comando.
+O código está em TypeScript. O Node executa os `.ts` direto, sem passo de build. O SQL mora em `packages/login-sdk/sql/schema.sql`.
 
-## Comandos
+## Instalação
 
-Na raiz:
+No projeto que vai usar a SDK:
+
+```bash
+npm install @curso/login-sdk
+```
+
+O install traz `src` e `sql`. Não traz `node_modules` nem `auth.sqlite`. Precisa de Node.js 22.6 ou mais novo. React 18 ou mais novo só é necessário se o projeto importar `@curso/login-sdk/react`.
+
+O caminho padrão do banco é `data/auth.sqlite` ao lado do código do pacote. Depois do install, esse caminho cai dentro de `node_modules` e some na próxima instalação. O projeto que instalou a SDK cria o arquivo num caminho seu e passa esse caminho para `createAuth`:
+
+```ts
+import { createAuth, createDatabaseFile } from "@curso/login-sdk";
+
+const file = createDatabaseFile("./data/auth.sqlite");
+const auth = createAuth({ file });
+```
+
+`./data/auth.sqlite` fica no projeto consumidor. `users` e `sessions` nascem nesse arquivo. Sem `file`, a SDK grava dentro do próprio pacote — serve para este repositório, não para quem instalou.
+
+## Comandos deste repositório
+
+Na raiz, para rodar o exemplo:
 
 ```bash
 npm install
@@ -28,9 +49,9 @@ A tela fala com a API por `/api`. A API usa `@curso/login-sdk`.
 
 | Pasta | Pacote |
 | --- | --- |
-| `packages/login-sdk` | `@curso/login-sdk` |
-| `apps/api` | `@curso/api` |
-| `apps/web` | `@curso/web` |
+| `packages/login-sdk` | `@curso/login-sdk`, o pacote instalável |
+| `apps/api` | `@curso/api`, exemplo, `private` |
+| `apps/web` | `@curso/web`, exemplo, `private` |
 
 ## SDK
 
@@ -93,7 +114,7 @@ const user = auth.me(session.token);
 auth.logout(session.token);
 ```
 
-Sem `file`, a SDK usa o `auth.sqlite` de dentro do próprio pacote. Para outro caminho: `createAuth({ file: "./outro.sqlite" })`.
+Quem instalou `@curso/login-sdk` passa `file` com um caminho do próprio projeto, como na seção Instalação. Sem `file`, a SDK usa o `auth.sqlite` de dentro do pacote.
 
 `register` e `login` são assíncronos por causa do `scrypt`. `me`, `can` e `logout` só leem o arquivo.
 
