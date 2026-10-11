@@ -1,0 +1,31 @@
+{
+  "name": "sdk-auth",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "scripts": {
+    "db:create": "npm run db:create -w @curso/login-sdk",
+    "dev": "npm run db:create && concurrently -n api,web \"npm run dev -w @curso/api\" \"npm run dev -w @curso/web\"",
+    "dev:api": "npm run dev -w @curso/api",
+    "dev:web": "npm run dev -w @curso/web",
+    "test": "npm test -w @curso/login-sdk",
+    "typecheck": "npm run typecheck -w @curso/login-sdk && npm run typecheck -w @curso/api && npm run typecheck -w @curso/web"
+  },
+  "dependencies": {
+    "@isaac545454/nucleus": "0.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "concurrently": "^9.2.1",
+    "typescript": "^7.0.2"
+  }
+}

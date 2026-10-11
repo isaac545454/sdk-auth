@@ -1,0 +1,121 @@
+# sdk-auth
+
+Monorepo de aula: SDK de login com SQLite, API Express e tela React. O código está em TypeScript. O Node executa os `.ts` direto, sem passo de build.
+
+O SQL mora em `packages/login-sdk/sql/schema.sql`. O arquivo `auth.sqlite` nasce em `packages/login-sdk/data/` quando você roda o comando.
+
+## Comandos
+
+Na raiz:
+
+```bash
+npm install
+npm run db:create
+npm run dev
+```
+
+| Comando | O que faz |
+| --- | --- |
+| `npm run db:create` | Cria `packages/login-sdk/data/auth.sqlite` e as tabelas `users` e `sessions` |
+| `npm run dev` | Cria o arquivo, sobe a API e a tela |
+| `npm run dev:api` | Só a API, em http://localhost:3333 |
+| `npm run dev:web` | Só a tela, em http://localhost:5173 |
+| `npm test` | Testes da SDK |
+
+A tela fala com a API por `/api`. A API usa `@curso/login-sdk`.
+
+## Pacotes
+
+| Pasta | Pacote |
+| --- | --- |
+| `packages/login-sdk` | `@curso/login-sdk` |
+| `apps/api` | `@curso/api` |
+| `apps/web` | `@curso/web` |
+
+## SDK
+
+No React, o `SessionProvider` guarda o token e a tela só pergunta o status. Igual o [`SessionProvider` do NextAuth](https://next-auth.js.org/).
+
+```tsx
+import { SessionProvider, useSession, signIn, signOut } from "@curso/login-sdk/react";
+
+function Root() {
+  return (
+    <SessionProvider>
+      <App />
+    </SessionProvider>
+  );
+}
+
+function App() {
+  const { data: session, status } = useSession();
+
+  if (status === "loading") return <p>Abrindo sessão</p>;
+  if (status === "authenticated") {
+    return (
+      <>
+        <p>{session.user.email}</p>
+        <button onClick={() => signOut()}>Sair</button>
+      </>
+    );
+  }
+  return <button onClick={() => signIn({ email, password })}>Entrar</button>;
+}
+```
+
+`status` é `"loading"`, `"authenticated"` ou `"unauthenticated"`. `register({ email, password, role })` cria a conta e não abre sessão. Sem `role`, a conta nasce `USER`. Depois do `signIn`, `session.user.role` e `session.user.permissions` vêm do login.
+
+No servidor, crie o arquivo no terminal antes de usar a SDK:
+
+```bash
+npm run db:create
+```
+
+O comando cria `packages/login-sdk/data/auth.sqlite` e as tabelas `users` e `sessions`. `npm run dev` roda esse passo sozinho.
+
+```ts
+import { createAuth } from "@curso/login-sdk";
+
+const auth = createAuth();
+await auth.register({
+  email: "ana@curso.dev",
+  password: "senha-do-exemplo",
+  role: "ADM",
+});
+const session = await auth.login({
+  email: "ana@curso.dev",
+  password: "senha-do-exemplo",
+});
+session.user.role; // "ADM"
+session.user.permissions; // inclui "users:write"
+auth.can(session.token, "users:write"); // true
+const user = auth.me(session.token);
+auth.logout(session.token);
+```
+
+Sem `file`, a SDK usa o `auth.sqlite` de dentro do próprio pacote. Para outro caminho: `createAuth({ file: "./outro.sqlite" })`.
+
+`register` e `login` são assíncronos por causa do `scrypt`. `me`, `can` e `logout` só leem o arquivo.
+
+O papel entra no `register`. Sem `role`, a conta nasce `USER`. O `login` não escolhe papel: devolve o que já está gravado, mais a lista `permissions`. `auth.can(token, permissão)` responde se a sessão tem aquela permissão. `ROLES` exporta os quatro nomes.
+
+| Papel | Quem é | Permissões |
+| --- | --- | --- |
+| `ADM` | administrador | `users:read`, `users:write`, `content:moderate`, `content:write`, `content:read` |
+| `MOD` | moderador | `content:moderate`, `content:write`, `content:read` |
+| `USER` | usuário, padrão | `content:write`, `content:read` |
+| `GUEST` | convidado | `content:read` |
+
+`adm` e `Adm` viram `ADM`. Outro nome cai em `INVALID_INPUT`. Banco criado antes desta coluna ganha `role` com valor `USER` na próxima abertura.
+
+Na tela, a permissão do formulário vale só em **Criar conta**. Depois do login, a sessão mostra o papel e as permissões.
+
+| Código | Quando |
+| --- | --- |
+| `INVALID_INPUT` | e-mail inválido, senha com menos de 8 caracteres ou papel fora de `ADM`, `MOD`, `USER` e `GUEST` |
+| `EMAIL_IN_USE` | e-mail já cadastrado |
+| `INVALID_CREDENTIALS` | e-mail ou senha não conferem |
+
+Precisa de Node.js 22.6 ou mais novo, pelo `node:sqlite` e pelo TypeScript nativo. O Node pode avisar que o `node:sqlite` ainda é experimental.
+
+Sem e-mail de confirmação, sem reset de senha, sem OAuth e sem deploy.

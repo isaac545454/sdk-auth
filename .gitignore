@@ -1,0 +1,6 @@
+node_modules/
+/dist/
+apps/*/dist/
+*.sqlite
+*.sqlite-journal
+*.tgz
